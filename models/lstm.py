@@ -113,47 +113,69 @@ class _LSTMBlock(nn.Module):
 
         return c_t, h_t
 
-class LSTMEncoder(nn.Module):
-    def __init__(self, input_dim = 256, hidden_dim = 512):
+class LSTM(nn.Module):
+    def __init__(self, n_layers, input_dim, hidden_dim):
         super().__init__()
+        self.n_layers = n_layers
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
-        self.layer_dim = 4 ### Layer Dimension from the Paper
 
-        # self.lstm1 = _LSTMBlock(input_dim = self.input_dim, hidden_dim = self.hidden_dim)
-        # self.lstm2 = _LSTMBlock(input_dim = self.hidden_dim, hidden_dim = self.hidden_dim)
-        # self.lstm3 = _LSTMBlock(input_dim = self.hidden_dim, hidden_dim = self.hidden_dim)
-        # self.lstm4 = _LSTMBlock(input_dim = self.hidden_dim, hidden_dim = self.hidden_dim)
         self.lstm_layers = [_LSTMBlock(input_dim = self.input_dim, hidden_dim = self.hidden_dim)]
-        for i in range(3):
+        for _ in range(self.n_layers - 1):
             self.lstm_layers.append(_LSTMBlock(input_dim = self.hidden_dim, hidden_dim = self.hidden_dim))
+        
+        self.lstm_layers = nn.ModuleList(self.lstm_layers)
+    
+    def forward(self, cell_state, hidden_state, x):        
+        ### Only a Single Token for Input
+        cell_state[0], hidden_state[0] = self.lstm_layers[0](cell_state[0], hidden_state[0], x)
+        if self.n_layers > 1:
+            for layer in range(1, self.n_layers):
+                cell_state[layer], hidden_state[layer] = self.lstm_layers[layer](cell_state[layer], hidden_state[layer], hidden_state[layer - 1])
+        
+        ### Return States of All Layers
+        return cell_state, hidden_state
 
-    def forward(self, x):
-        assert len(x.shape) == 3
-        cell_state = torch.zeros(self.layer_dim, x.size(0), x.size(1), self.hidden_dim)
-        hidden_state = torch.zeros(self.layer_dim, x.size(0), x.size(1), self.hidden_dim)
+class LSTMEncoder(nn.Module):
+    def __init__(self, n_layers, input_dim, hidden_dim):
+        super().__init__()
+        self.n_layers = n_layers
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.lstm = LSTM(n_layers = self.n_layers, input_dim = self.input_dim, hidden_dim = self.hidden_dim)
+    
+    def forward(self, sequence):
+        cell_state = torch.zeros(self.n_layers, sequence.size(0), self.hidden_dim)
+        hidden_state = torch.zeros(self.n_layers, sequence.size(0), self.hidden_dim)
 
-        ### Get Hidden States for the First LSTM Layers
-        for seq in range(x.size(1)):
-            cell_state[0, :, seq], hidden_state[0, :, seq] = self.lstm_layers[0](cell_state[0, :, seq], hidden_state[0, :, seq], x[:, seq])
-
-        ### Use Hidden States of Lower LSTM Layers for the Rest of the LSTM Layers
-        for layer in range(1, len(self.lstm_layers)):
-            for seq in range(x.size(1)):
-                cell_state[layer, :, seq], hidden_state[layer, :, seq] = self.lstm_layers[layer](cell_state[layer, :, seq], hidden_state[layer, :, seq], hidden_state[layer - 1, :, seq])
-
-        ### Final Hidden State Output at the end of the Sequence will be Passed to the Decoder
-        return hidden_state[-1, :, -1]
+        for seq in range(sequence.size(1)):
+            cell_state, hidden_state = self.lstm(cell_state, hidden_state, sequence[:, seq])
+        
+        return cell_state, hidden_state
 
 class LSTMDecoder(nn.Module):
-    def __init__(self):
+    def __init__(self, n_layers, input_dim, hidden_dim, dict_size):
         super().__init__()
+        self.n_layers = n_layers
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.lstm = LSTM(n_layers = self.n_layers, input_dim = self.input_dim, hidden_dim = self.hidden_dim)
+        self.classifier = nn.Sequential(nn.Linear(self.hidden_dim, self.hidden_dim * 4),
+                                        nn.Dropout(0.5),
+                                        nn.Linear(self.hidden_dim * 4, dict_size))
     
-    def forward(self):
+    def forward(self, cell_state, hidden_state, sequence):
+        outputs = []
+        for seq in range(sequence.size(1)):
+            cell_state, hidden_state = self.lstm(cell_state, hidden_state, sequence[:, seq])
+            outputs.append(self.classifier(hidden_state[-1]))
+        
+        outputs = torch.stack(outputs, dim = 1)
+
+        return outputs
+
+    def inference(self):
         pass
 
-if __name__ == "__main__":
-    test_tensor = torch.randn(8, 4, 256) ### batch, seq, dim
-    encoder = LSTMEncoder()
-    output = encoder(test_tensor)
-    breakpoint()
+    def beam_search(self):
+        pass
