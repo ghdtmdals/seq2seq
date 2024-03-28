@@ -126,7 +126,7 @@ class LSTM(nn.Module):
         
         self.lstm_layers = nn.ModuleList(self.lstm_layers)
     
-    def forward(self, cell_state, hidden_state, x):        
+    def forward(self, cell_state, hidden_state, x):
         ### Only a Single Token for Input
         cell_state[0], hidden_state[0] = self.lstm_layers[0](cell_state[0], hidden_state[0], x)
         if self.n_layers > 1:
@@ -139,14 +139,15 @@ class LSTM(nn.Module):
 class LSTMEncoder(nn.Module):
     def __init__(self, n_layers, input_dim, hidden_dim):
         super().__init__()
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.n_layers = n_layers
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.lstm = LSTM(n_layers = self.n_layers, input_dim = self.input_dim, hidden_dim = self.hidden_dim)
     
     def forward(self, sequence):
-        cell_state = torch.zeros(self.n_layers, sequence.size(0), self.hidden_dim)
-        hidden_state = torch.zeros(self.n_layers, sequence.size(0), self.hidden_dim)
+        cell_state = torch.zeros(self.n_layers, sequence.size(0), self.hidden_dim).to(self.device)
+        hidden_state = torch.zeros(self.n_layers, sequence.size(0), self.hidden_dim).to(self.device)
 
         for seq in range(sequence.size(1)):
             cell_state, hidden_state = self.lstm(cell_state, hidden_state, sequence[:, seq])
