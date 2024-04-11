@@ -7,6 +7,7 @@ from data.dataset import TranslationDataset
 from torch.utils.data import DataLoader
 
 from torch.optim import AdamW
+from tqdm import tqdm
 
 class Train:
     def __init__(self, train_path, test_path, batch_size, epochs, learning_rate, n_workers = 0):
@@ -57,13 +58,23 @@ class Train:
         model = model.to(self.device)
 
         model.train()
-        for korean, english, eng_target in train_dataloader:
-            korean = korean.to(self.device)
-            english = english.to(self.device)
-            eng_target = eng_target.to(self.device)
+        running_loss = 0
+        with torch.autograd.detect_anomaly():
+            for korean, english, eng_target in tqdm(train_dataloader, desc = f"Loss: {running_loss}", leave = True):
+                korean = korean.to(self.device)
+                english = english.to(self.device)
 
-            outputs = model(korean, english)
-            breakpoint()
+                outputs = model(korean, english)
+
+                outputs = outputs.view(-1, outputs.shape[-1])
+                eng_target = eng_target.view(-1).type(torch.LongTensor).to(self.device)
+                
+                loss = criterion(outputs, eng_target)
+                running_loss += loss.item()
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
 if __name__ == "__main__":
     train_path = "./dataset/train_korean_english_dataset.json"
