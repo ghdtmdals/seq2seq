@@ -58,9 +58,10 @@ class Train:
         model = model.to(self.device)
 
         model.train()
+        n_iter = 0
         running_loss = 0
-        with torch.autograd.detect_anomaly():
-            for korean, english, eng_target in tqdm(train_dataloader, desc = f"Loss: {running_loss}", leave = True):
+        for epoch in range(epochs):
+            for i, (korean, english, eng_target) in enumerate(train_dataloader):
                 korean = korean.to(self.device)
                 english = english.to(self.device)
 
@@ -76,15 +77,29 @@ class Train:
                 loss.backward()
                 optimizer.step()
 
+                n_iter += 1
+
+                if i % 10 == 0:
+                    avg_loss = running_loss / n_iter
+                    content = f"Epoch: {epoch} | Iter: {i} | Avg Loss: {avg_loss:.4f}"
+                    print("\r{}".format(content), end = "")
+
+                    running_loss = 0
+                    n_iter = 0
+            
+            torch.save({"model_state_dict": model.state_dict()},
+                       f"./checkpoints/model_trained_epoch_{epoch}.pt")
+            print("")
+            
 if __name__ == "__main__":
     train_path = "./dataset/train_korean_english_dataset.json"
     test_path = "./dataset/test_korean_english_dataset.json"
 
-    batch_size = 4
+    batch_size = 8
     learning_rate = 1e-4
     epochs = 30
 
-    train = Train(train_path, test_path, batch_size, epochs, learning_rate)
+    train = Train(train_path, test_path, batch_size, epochs, learning_rate, n_workers = 6)
     train.train_loop()
 
     breakpoint()

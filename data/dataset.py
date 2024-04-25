@@ -45,12 +45,19 @@ class TranslationDataset(Dataset):
     
     def convert_to_sequence(self, source, target):
         source_seq = []
+
         for token in source:
-            source_seq.append(TranslationDataset.source_vocab[token])
+            if token == '':
+                source_seq.append(0)
+            else:
+                source_seq.append(TranslationDataset.source_vocab[token])
         
         target_seq = []
         for token in target:
-            target_seq.append(TranslationDataset.target_vocab[token])
+            if token == '':
+                target_seq.append(0)
+            else:
+                target_seq.append(TranslationDataset.target_vocab[token])
         
         source_seq = torch.Tensor(source_seq).type(torch.int32)
         target_seq = torch.Tensor(target_seq).type(torch.int32)

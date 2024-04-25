@@ -100,16 +100,16 @@ class _LSTMBlock(nn.Module):
     
     def forward(self, cell, hidden, x):
         ### Forget Gate
-        f_t = self.forget_gate(hidden, x)
+        f_t = self.forget_gate(hidden.clone(), x.clone())
 
         ### Input Gate
-        i_t, C_tilde_t = self.input_gate(hidden, x)
+        i_t, C_tilde_t = self.input_gate(hidden.clone(), x.clone())
 
         ### Update Cell state
-        c_t = self.update_cell_state(cell, f_t, i_t, C_tilde_t)
+        c_t = self.update_cell_state(cell.clone(), f_t, i_t, C_tilde_t)
 
         ### Update Hidden state
-        h_t = self.output_gate(hidden, x, c_t)
+        h_t = self.output_gate(hidden.clone(), x.clone(), c_t)
 
         return c_t, h_t
 
@@ -169,7 +169,9 @@ class LSTMDecoder(nn.Module):
         outputs = []
         for seq in range(sequence.size(1)):
             cell_state, hidden_state = self.lstm(cell_state, hidden_state, sequence[:, seq])
-            outputs.append(self.classifier(hidden_state[-1]))
+            output = self.classifier(hidden_state[-1].clone())
+            outputs.append(output)
+            # outputs.append(self.classifier(hidden_state[-1]))
         
         outputs = torch.stack(outputs, dim = 1)
 
