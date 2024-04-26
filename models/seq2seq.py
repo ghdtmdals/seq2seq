@@ -29,11 +29,11 @@ class Seq2Seq(nn.Module):
 
         return outputs
 
-if __name__ == "__main__":    
-    input_sequence = torch.randint(0, 306926, (8, 7))
-    target_sequence = torch.randint(0, 204764, (8, 10))
-    model = Seq2Seq(n_layers = 4, input_dim = 256, hidden_dim = 512)
+# if __name__ == "__main__":    
+#     input_sequence = torch.randint(0, 306926, (8, 7))
+#     target_sequence = torch.randint(0, 204764, (8, 10))
+#     model = Seq2Seq(n_layers = 4, input_dim = 256, hidden_dim = 512)
 
-    outputs = model(input_sequence, target_sequence)
+#     outputs = model(input_sequence, target_sequence)
     
-    breakpoint()
+#     breakpoint()

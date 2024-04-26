@@ -54,7 +54,7 @@ class TranslationDataset(Dataset):
         
         target_seq = []
         for token in target:
-            if token == '':
+            if token == '': ### 일부 빈 토큰이 생성됨, 해당 토큰은 <PAD>로 변환
                 target_seq.append(0)
             else:
                 target_seq.append(TranslationDataset.target_vocab[token])

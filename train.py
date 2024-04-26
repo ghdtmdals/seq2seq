@@ -102,4 +102,4 @@ if __name__ == "__main__":
     train = Train(train_path, test_path, batch_size, epochs, learning_rate, n_workers = 6)
     train.train_loop()
 
-    breakpoint()
+    # breakpoint()

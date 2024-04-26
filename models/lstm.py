@@ -99,6 +99,9 @@ class _LSTMBlock(nn.Module):
         return hidden_updated
     
     def forward(self, cell, hidden, x):
+        ### 전달 받은 cell과 hidden, x가 여러 linear layer를 통과하면서
+        ### Back Propagation 시점에 inplace operation 에러가 발생
+        ### .clone()을 통해 각 gate가 개별적인 입력을 갖도록 구성함
         ### Forget Gate
         f_t = self.forget_gate(hidden.clone(), x.clone())
 
@@ -149,6 +152,7 @@ class LSTMEncoder(nn.Module):
         cell_state = torch.zeros(self.n_layers, sequence.size(0), self.hidden_dim).to(self.device)
         hidden_state = torch.zeros(self.n_layers, sequence.size(0), self.hidden_dim).to(self.device)
 
+        ### Sequence의 각 토큰 단위로 반복하도록 구성
         for seq in range(sequence.size(1)):
             cell_state, hidden_state = self.lstm(cell_state, hidden_state, sequence[:, seq])
         
@@ -167,6 +171,7 @@ class LSTMDecoder(nn.Module):
     
     def forward(self, cell_state, hidden_state, sequence):
         outputs = []
+        ### Sequence의 각 토큰 단위로 반복하도록 구성
         for seq in range(sequence.size(1)):
             cell_state, hidden_state = self.lstm(cell_state, hidden_state, sequence[:, seq])
             output = self.classifier(hidden_state[-1].clone())
